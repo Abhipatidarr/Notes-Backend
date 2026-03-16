@@ -1,0 +1,19 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "@prisma/client": "^6.0.0",
+    "bcrypt": "^6.0.0",
+    "hono": "^4.12.8",
+    "hono-rate-limiter": "^0.5.3",
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^6.0.0",
+    "zod": "^4.3.6"
+  }
+}
