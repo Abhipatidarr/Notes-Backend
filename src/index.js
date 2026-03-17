@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { rateLimiter } from "hono-rate-limiter"
+import { cors } from "hono/cors"
 
 import authRoutes from "./routes/auth.routes.js"
 import notesRoutes from "./routes/notes.routes.js"
@@ -13,6 +14,16 @@ const app = new Hono()
    GLOBAL MIDDLEWARE
 ========================= */
 
+// CORS (IMPORTANT for frontend requests)
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+  })
+)
+
 // Global error handler
 app.use("*", errorHandler)
 
@@ -20,12 +31,11 @@ app.use("*", errorHandler)
    RATE LIMITING
 ========================= */
 
-// Limit auth routes (login/signup)
 app.use(
   "/auth/*",
   rateLimiter({
-    windowMs: 60 * 1000, // 1 minute
-    limit: 10,           // max 10 requests
+    windowMs: 60 * 1000,
+    limit: 10,
     standardHeaders: true,
     keyGenerator: (c) => c.req.header("x-forwarded-for") || "anonymous"
   })
@@ -54,7 +64,7 @@ app.route("/notes", notesRoutes)
 
 serve({
   fetch: app.fetch,
-  port: 3000
+  port: process.env.PORT || 3000
 })
 
 console.log("🚀 Server running at http://localhost:3000")
