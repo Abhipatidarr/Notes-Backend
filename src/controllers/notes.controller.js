@@ -81,7 +81,10 @@ export const createNote = async (c) => {
       content: result.data.content ?? "",
       tag: result.data.tag,
       imageUrl: result.data.imageUrl || null,
+      fileUrl: result.data.fileUrl || null,
       checklist: result.data.checklist || [],
+      isLocked: result.data.isLocked ?? false,
+      lockHint: result.data.lockHint || null,
       folderId: folder?.id ?? null,
       userId
     },
@@ -203,6 +206,15 @@ export const updateNote = async (c) => {
     return c.json({ message: "Note not found or unauthorized" }, 404)
   }
 
+  await prisma.noteVersion.create({
+    data: {
+      noteId: note.id,
+      title: note.title,
+      content: note.content,
+      editedById: userId
+    }
+  })
+
   const folder = await upsertFolder(parsed.data.folderName, userId)
 
   const updatedNote = await prisma.note.update({
@@ -212,8 +224,11 @@ export const updateNote = async (c) => {
       content: parsed.data.content,
       tag: parsed.data.tag,
       imageUrl: parsed.data.imageUrl || null,
+      fileUrl: parsed.data.fileUrl || null,
       checklist: parsed.data.checklist || [],
       archived: parsed.data.archived ?? note.archived,
+      isLocked: parsed.data.isLocked ?? note.isLocked,
+      lockHint: parsed.data.lockHint ?? note.lockHint,
       folderId: folder?.id ?? null
     },
     include: includeRelations
@@ -373,4 +388,20 @@ export const createFolder = async (c) => {
   })
 
   return c.json(folder)
+}
+
+export const setNoteLock = async (c) => {
+  const id = parseInt(c.req.param("id"))
+  const userId = c.get("userId")
+  const { isLocked = true, lockHint = null } = await c.req.json()
+
+  const note = await prisma.note.findFirst({ where: { id, userId } })
+  if (!note) return c.json({ message: "Note not found" }, 404)
+
+  const updated = await prisma.note.update({
+    where: { id },
+    data: { isLocked, lockHint }
+  })
+
+  return c.json(updated)
 }

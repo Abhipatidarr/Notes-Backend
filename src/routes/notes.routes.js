@@ -12,7 +12,8 @@ import {
   getTags,
   createTag,
   getFolders,
-  createFolder
+  createFolder,
+  setNoteLock
 } from "../controllers/notes.controller.js"
 
 const notes = new Hono()
@@ -75,5 +76,6 @@ notes.patch("/:id/pin", togglePin)
    ARCHIVE / UNARCHIVE NOTE
 ========================= */
 notes.patch("/:id/archive", toggleArchive)
+notes.patch("/:id/lock", setNoteLock)
 
 export default notes
