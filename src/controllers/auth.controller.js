@@ -45,37 +45,46 @@ export const signup = async (c) => {
 ========================= */
 
 export const login = async (c) => {
-  const { email, password } = await c.req.json()
+  try {
 
-  const user = await prisma.user.findUnique({
-    where: { email }
-  })
+    const { email, password } = await c.req.json()
 
-  if (!user) {
-    return c.json({ message: "User not found" }, 401)
+    const user = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    if (!user) {
+      return c.json({ message: "User not found" }, 401)
+    }
+
+    if (!user.password) {
+      return c.json({ message: "Password not set" }, 500)
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password)
+
+    if (!isValidPassword) {
+      return c.json({ message: "Invalid password" }, 401)
+    }
+
+    const accessToken = jwt.sign(
+      { userId: user.id },
+      JWT_SECRET,
+      { expiresIn: "15m" }
+    )
+
+    return c.json({
+      message: "Login successful",
+      accessToken
+    })
+
+  } catch (error) {
+
+    console.log("LOGIN ERROR:", error)
+
+    return c.json({
+      message: "Server error"
+    }, 500)
+
   }
-
-  const isValidPassword = await bcrypt.compare(password, user.password)
-
-  if (!isValidPassword) {
-    return c.json({ message: "Invalid password" }, 401)
-  }
-
-  const accessToken = jwt.sign(
-    { userId: user.id },
-    JWT_SECRET,
-    { expiresIn: "15m" }
-  )
-
-  const refreshToken = jwt.sign(
-    { userId: user.id },
-    JWT_SECRET,
-    { expiresIn: "7d" }
-  )
-
-  return c.json({
-    message: "Login successful",
-    accessToken,
-    refreshToken
-  })
 }
