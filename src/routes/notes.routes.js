@@ -6,17 +6,52 @@ import {
   getNotes,
   getNoteById,
   updateNote,
-  deleteNote
+  deleteNote,
+  togglePin
 } from "../controllers/notes.controller.js"
 
 const notes = new Hono()
 
+/* =========================
+   AUTH MIDDLEWARE
+========================= */
+
 notes.use("*", authMiddleware)
 
+/* =========================
+   CREATE NOTE
+========================= */
+
 notes.post("/", createNote)
+
+/* =========================
+   GET ALL NOTES
+========================= */
+
 notes.get("/", getNotes)
+
+/* =========================
+   GET SINGLE NOTE
+========================= */
+
 notes.get("/:id", getNoteById)
+
+/* =========================
+   UPDATE NOTE
+========================= */
+
 notes.put("/:id", updateNote)
+
+/* =========================
+   DELETE NOTE
+========================= */
+
 notes.delete("/:id", deleteNote)
+
+/* =========================
+   PIN / UNPIN NOTE
+========================= */
+
+notes.patch("/:id/pin", togglePin)
 
 export default notes

@@ -34,20 +34,29 @@ export const createNote = async (c) => {
 ========================= */
 
 export const getNotes = async (c) => {
+
   const userId = c.get("userId")
 
   const page = parseInt(c.req.query("page")) || 1
-  const limit = parseInt(c.req.query("limit")) || 5
+  const limit = parseInt(c.req.query("limit")) || 10
+  const search = c.req.query("search") || ""
 
   const skip = (page - 1) * limit
 
   const notes = await prisma.note.findMany({
-    where: { userId },
+    where: {
+      userId,
+      title: {
+        contains: search,
+        mode: "insensitive"
+      }
+    },
     skip,
     take: limit,
-    orderBy: {
-      createdAt: "desc"
-    }
+    orderBy: [
+      { pinned: "desc" },
+      { createdAt: "desc" }
+    ]
   })
 
   return c.json({
@@ -136,4 +145,29 @@ export const deleteNote = async (c) => {
   return c.json({
     message: "Note deleted successfully"
   })
+}
+
+/* =========================
+   PIN NOTE
+========================= */
+
+export const togglePin = async (c) => {
+
+  const id = parseInt(c.req.param("id"))
+  const userId = c.get("userId")
+
+  const note = await prisma.note.findFirst({
+    where:{ id, userId }
+  })
+
+  if(!note){
+    return c.json({message:"Note not found"},404)
+  }
+
+  const updated = await prisma.note.update({
+    where:{ id },
+    data:{ pinned: !note.pinned }
+  })
+
+  return c.json(updated)
 }
