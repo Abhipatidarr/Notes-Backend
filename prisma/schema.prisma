@@ -12,6 +12,8 @@ model User {
   email    String @unique
   password String
   notes    Note[]
+  folders  Folder[]
+  tags     Tag[]
 }
 
 model Note {
@@ -20,7 +22,49 @@ model Note {
   content   String
   tag       String?
   pinned    Boolean  @default(false)
+  archived  Boolean  @default(false)
+  imageUrl  String?
+  checklist Json?
+  order     Int      @default(0)
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
+  folderId  Int?
+  folder    Folder?  @relation(fields: [folderId], references: [id])
+  tags      NoteTag[]
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Folder {
+  id        Int      @id @default(autoincrement())
+  name      String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  notes     Note[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  name      String
+  color     String?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  notes     NoteTag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+}
+
+model NoteTag {
+  noteId Int
+  tagId  Int
+  note   Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
 }
