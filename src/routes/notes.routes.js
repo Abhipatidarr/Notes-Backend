@@ -8,12 +8,7 @@ import {
   updateNote,
   deleteNote,
   togglePin,
-  toggleArchive,
-  getTags,
-  createTag,
-  getFolders,
-  createFolder,
-  setNoteLock
+  toggleArchive
 } from "../controllers/notes.controller.js"
 
 const notes = new Hono()
@@ -35,18 +30,6 @@ notes.post("/", createNote)
 ========================= */
 
 notes.get("/", getNotes)
-
-/* =========================
-   TAG ROUTES
-========================= */
-notes.get("/meta/tags", getTags)
-notes.post("/meta/tags", createTag)
-
-/* =========================
-   FOLDER ROUTES
-========================= */
-notes.get("/meta/folders", getFolders)
-notes.post("/meta/folders", createFolder)
 
 /* =========================
    GET SINGLE NOTE
@@ -76,6 +59,5 @@ notes.patch("/:id/pin", togglePin)
    ARCHIVE / UNARCHIVE NOTE
 ========================= */
 notes.patch("/:id/archive", toggleArchive)
-notes.patch("/:id/lock", setNoteLock)
 
 export default notes

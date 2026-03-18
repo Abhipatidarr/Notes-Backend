@@ -1,61 +1,6 @@
 import prisma from "../db.js"
 import { createNoteSchema, updateNoteSchema } from "../validators/note.validator.js"
 
-const includeRelations = {
-  folder: true,
-  tags: {
-    include: {
-      tag: true
-    }
-  }
-}
-
-const upsertFolder = async (folderName, userId) => {
-  if (!folderName?.trim()) return null
-  return prisma.folder.upsert({
-    where: {
-      userId_name: {
-        userId,
-        name: folderName.trim()
-      }
-    },
-    update: {},
-    create: {
-      name: folderName.trim(),
-      userId
-    }
-  })
-}
-
-const syncTags = async ({ noteId, tags = [], userId }) => {
-  await prisma.noteTag.deleteMany({ where: { noteId } })
-  if (!tags.length) return
-
-  for (const tagName of tags) {
-    if (!tagName?.trim()) continue
-    const tag = await prisma.tag.upsert({
-      where: {
-        userId_name: {
-          userId,
-          name: tagName.trim()
-        }
-      },
-      update: {},
-      create: {
-        userId,
-        name: tagName.trim()
-      }
-    })
-
-    await prisma.noteTag.create({
-      data: {
-        noteId,
-        tagId: tag.id
-      }
-    })
-  }
-}
-
 /* =========================
    CREATE NOTE
 ========================= */
@@ -73,32 +18,19 @@ export const createNote = async (c) => {
   }
 
   const userId = c.get("userId")
-  const folder = await upsertFolder(result.data.folderName, userId)
 
   const note = await prisma.note.create({
     data: {
       title: result.data.title,
       content: result.data.content ?? "",
-      tag: result.data.tag,
       imageUrl: result.data.imageUrl || null,
-      fileUrl: result.data.fileUrl || null,
       checklist: result.data.checklist || [],
-      isLocked: result.data.isLocked ?? false,
-      lockHint: result.data.lockHint || null,
-      folderId: folder?.id ?? null,
+      pinned: result.data.pinned ?? false,
+      archived: result.data.archived ?? false,
       userId
-    },
-    include: includeRelations
+    }
   })
-
-  await syncTags({ noteId: note.id, tags: result.data.tags || [], userId })
-
-  const withRelations = await prisma.note.findUnique({
-    where: { id: note.id },
-    include: includeRelations
-  })
-
-  return c.json(withRelations)
+  return c.json(note)
 }
 
 /* =========================
@@ -115,7 +47,6 @@ export const getNotes = async (c) => {
   const sortBy = c.req.query("sortBy") || "date"
   const pinnedOnly = c.req.query("pinnedOnly") === "true"
   const archived = c.req.query("archived") === "true"
-  const folder = c.req.query("folder")
 
   const skip = (page - 1) * limit
 
@@ -124,7 +55,6 @@ export const getNotes = async (c) => {
       userId,
       archived,
       ...(pinnedOnly ? { pinned: true } : {}),
-      ...(folder ? { folder: { name: folder } } : {}),
       OR: [
         {
           title: {
@@ -142,7 +72,6 @@ export const getNotes = async (c) => {
     },
     skip,
     take: limit,
-    include: includeRelations,
     orderBy:
       sortBy === "title"
         ? [{ pinned: "desc" }, { title: "asc" }]
@@ -162,14 +91,14 @@ export const getNotes = async (c) => {
 
 export const getNoteById = async (c) => {
   const id = parseInt(c.req.param("id"))
+  if (Number.isNaN(id)) return c.json({ message: "Invalid note id" }, 400)
   const userId = c.get("userId")
 
   const note = await prisma.note.findFirst({
     where: {
       id,
       userId
-    },
-    include: includeRelations
+    }
   })
 
   if (!note) {
@@ -185,6 +114,7 @@ export const getNoteById = async (c) => {
 
 export const updateNote = async (c) => {
   const id = parseInt(c.req.param("id"))
+  if (Number.isNaN(id)) return c.json({ message: "Invalid note id" }, 400)
   const userId = c.get("userId")
   const body = await c.req.json()
   const parsed = updateNoteSchema.safeParse(body)
@@ -206,44 +136,18 @@ export const updateNote = async (c) => {
     return c.json({ message: "Note not found or unauthorized" }, 404)
   }
 
-  await prisma.noteVersion.create({
-    data: {
-      noteId: note.id,
-      title: note.title,
-      content: note.content,
-      editedById: userId
-    }
-  })
-
-  const folder = await upsertFolder(parsed.data.folderName, userId)
-
   const updatedNote = await prisma.note.update({
     where: { id },
     data: {
       title: parsed.data.title,
       content: parsed.data.content,
-      tag: parsed.data.tag,
       imageUrl: parsed.data.imageUrl || null,
-      fileUrl: parsed.data.fileUrl || null,
       checklist: parsed.data.checklist || [],
       archived: parsed.data.archived ?? note.archived,
-      isLocked: parsed.data.isLocked ?? note.isLocked,
-      lockHint: parsed.data.lockHint ?? note.lockHint,
-      folderId: folder?.id ?? null
-    },
-    include: includeRelations
+      pinned: parsed.data.pinned ?? note.pinned
+    }
   })
-
-  if (parsed.data.tags) {
-    await syncTags({ noteId: id, tags: parsed.data.tags, userId })
-  }
-
-  const withRelations = await prisma.note.findUnique({
-    where: { id },
-    include: includeRelations
-  })
-
-  return c.json(withRelations || updatedNote)
+  return c.json(updatedNote)
 }
 
 /* =========================
@@ -252,6 +156,7 @@ export const updateNote = async (c) => {
 
 export const deleteNote = async (c) => {
   const id = parseInt(c.req.param("id"))
+  if (Number.isNaN(id)) return c.json({ message: "Invalid note id" }, 400)
   const userId = c.get("userId")
 
   const note = await prisma.note.findFirst({
@@ -281,6 +186,7 @@ export const deleteNote = async (c) => {
 export const togglePin = async (c) => {
 
   const id = parseInt(c.req.param("id"))
+  if (Number.isNaN(id)) return c.json({ message: "Invalid note id" }, 400)
   const userId = c.get("userId")
 
   const note = await prisma.note.findFirst({
@@ -304,6 +210,7 @@ export const togglePin = async (c) => {
 ========================= */
 export const toggleArchive = async (c) => {
   const id = parseInt(c.req.param("id"))
+  if (Number.isNaN(id)) return c.json({ message: "Invalid note id" }, 400)
   const userId = c.get("userId")
 
   const note = await prisma.note.findFirst({
@@ -317,90 +224,6 @@ export const toggleArchive = async (c) => {
   const updated = await prisma.note.update({
     where: { id },
     data: { archived: !note.archived }
-  })
-
-  return c.json(updated)
-}
-
-/* =========================
-   TAGS / FOLDERS HELPERS
-========================= */
-export const getTags = async (c) => {
-  const userId = c.get("userId")
-  const tags = await prisma.tag.findMany({
-    where: { userId },
-    orderBy: { name: "asc" }
-  })
-  return c.json({ tags })
-}
-
-export const createTag = async (c) => {
-  const userId = c.get("userId")
-  const { name, color } = await c.req.json()
-  if (!name?.trim()) return c.json({ message: "Tag name required" }, 400)
-
-  const tag = await prisma.tag.upsert({
-    where: {
-      userId_name: {
-        userId,
-        name: name.trim()
-      }
-    },
-    update: {
-      color: color || null
-    },
-    create: {
-      userId,
-      name: name.trim(),
-      color: color || null
-    }
-  })
-
-  return c.json(tag)
-}
-
-export const getFolders = async (c) => {
-  const userId = c.get("userId")
-  const folders = await prisma.folder.findMany({
-    where: { userId },
-    orderBy: { name: "asc" }
-  })
-  return c.json({ folders })
-}
-
-export const createFolder = async (c) => {
-  const userId = c.get("userId")
-  const { name } = await c.req.json()
-  if (!name?.trim()) return c.json({ message: "Folder name required" }, 400)
-
-  const folder = await prisma.folder.upsert({
-    where: {
-      userId_name: {
-        userId,
-        name: name.trim()
-      }
-    },
-    update: {},
-    create: {
-      name: name.trim(),
-      userId
-    }
-  })
-
-  return c.json(folder)
-}
-
-export const setNoteLock = async (c) => {
-  const id = parseInt(c.req.param("id"))
-  const userId = c.get("userId")
-  const { isLocked = true, lockHint = null } = await c.req.json()
-
-  const note = await prisma.note.findFirst({ where: { id, userId } })
-  if (!note) return c.json({ message: "Note not found" }, 404)
-
-  const updated = await prisma.note.update({
-    where: { id },
-    data: { isLocked, lockHint }
   })
 
   return c.json(updated)

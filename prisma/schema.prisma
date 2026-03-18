@@ -8,194 +8,30 @@ datasource db {
 }
 
 model User {
-  id            Int              @id @default(autoincrement())
-  email         String           @unique
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
   password      String
-  oauthProvider String?
-  oauthId       String?
-  twoFactorCode String?
   notes         Note[]
-  folders       Folder[]
-  tags          Tag[]
-  tasks         Task[]           @relation("TaskOwner")
-  assignedTasks Task[]           @relation("TaskAssignee")
-  comments      NoteComment[]
-  shares        NoteShare[]      @relation("ShareOwner")
-  activities    ActivityLog[]
-  versions      NoteVersion[]    @relation("VersionActor")
-  templates     NoteTemplate[]
-  reminders     Reminder[]
-  backups       BackupSnapshot[]
   refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Note {
-  id                     Int           @id @default(autoincrement())
-  title                  String
-  content                String
-  tag                    String?
-  pinned                 Boolean       @default(false)
-  archived               Boolean       @default(false)
-  imageUrl               String?
-  latitude               Float?
-  longitude              Float?
-  reminderMinutes        Int?
-  reminderNotificationId String?
-  fileUrl                String?
-  checklist              Json?
-  order                  Int           @default(0)
-  isLocked               Boolean       @default(false)
-  lockHint               String?
-  encryptedContent       String?
-  userId                 Int
-  user                   User          @relation(fields: [userId], references: [id])
-  folderId               Int?
-  folder                 Folder?       @relation(fields: [folderId], references: [id])
-  tags                   NoteTag[]
-  tasks                  Task[]
-  comments               NoteComment[]
-  shares                 NoteShare[]
-  versions               NoteVersion[]
-  reminders              Reminder[]
-  activities             ActivityLog[]
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @default(now()) @updatedAt
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  pinned    Boolean  @default(false)
+  archived  Boolean  @default(false)
+  imageUrl  String?
+  checklist Json?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([userId, updatedAt])
   @@index([userId, archived, pinned])
-}
-
-model Folder {
-  id        Int      @id @default(autoincrement())
-  name      String
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  notes     Note[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, name])
-}
-
-model Tag {
-  id        Int       @id @default(autoincrement())
-  name      String
-  color     String?
-  userId    Int
-  user      User      @relation(fields: [userId], references: [id])
-  notes     NoteTag[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([userId, name])
-}
-
-model NoteTag {
-  noteId Int
-  tagId  Int
-  note   Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([noteId, tagId])
-}
-
-model Task {
-  id           Int       @id @default(autoincrement())
-  title        String
-  completed    Boolean   @default(false)
-  priority     String    @default("medium")
-  dueDate      DateTime?
-  recurring    String?
-  reminderAt   DateTime?
-  order        Int       @default(0)
-  noteId       Int?
-  note         Note?     @relation(fields: [noteId], references: [id], onDelete: SetNull)
-  userId       Int
-  user         User      @relation("TaskOwner", fields: [userId], references: [id])
-  assignedToId Int?
-  assignedTo   User?     @relation("TaskAssignee", fields: [assignedToId], references: [id])
-  parentId     Int?
-  parent       Task?     @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
-  subtasks     Task[]    @relation("TaskSubtasks")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-}
-
-model NoteComment {
-  id        Int      @id @default(autoincrement())
-  body      String
-  noteId    Int
-  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-}
-
-model NoteShare {
-  id          Int      @id @default(autoincrement())
-  noteId      Int
-  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  ownerId     Int
-  owner       User     @relation("ShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  targetEmail String
-  permission  String   @default("viewer")
-  createdAt   DateTime @default(now())
-}
-
-model ActivityLog {
-  id        Int      @id @default(autoincrement())
-  action    String
-  entity    String
-  entityId  Int?
-  payload   Json?
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  noteId    Int?
-  note      Note?    @relation(fields: [noteId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-}
-
-model NoteVersion {
-  id         Int      @id @default(autoincrement())
-  noteId     Int
-  note       Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  title      String
-  content    String
-  editedById Int?
-  editedBy   User?    @relation("VersionActor", fields: [editedById], references: [id], onDelete: SetNull)
-  createdAt  DateTime @default(now())
-}
-
-model NoteTemplate {
-  id        Int      @id @default(autoincrement())
-  name      String
-  title     String
-  content   String
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Reminder {
-  id        Int      @id @default(autoincrement())
-  noteId    Int?
-  note      Note?    @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  taskId    Int?
-  title     String
-  remindAt  DateTime
-  sent      Boolean  @default(false)
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-}
-
-model BackupSnapshot {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payload   Json
-  createdAt DateTime @default(now())
 }
 
 model RefreshToken {

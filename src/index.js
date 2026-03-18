@@ -5,10 +5,6 @@ import { cors } from "hono/cors"
 
 import authRoutes from "./routes/auth.routes.js"
 import notesRoutes from "./routes/notes.routes.js"
-import tasksRoutes from "./routes/tasks.routes.js"
-import collabRoutes from "./routes/collab.routes.js"
-import advancedRoutes from "./routes/advanced.routes.js"
-import systemRoutes from "./routes/system.routes.js"
 
 import { errorHandler } from "./middleware/error.middleware.js"
 
@@ -61,10 +57,6 @@ app.get("/", (c) => {
 
 app.route("/auth", authRoutes)
 app.route("/notes", notesRoutes)
-app.route("/tasks", tasksRoutes)
-app.route("/collab", collabRoutes)
-app.route("/advanced", advancedRoutes)
-app.route("/system", systemRoutes)
 
 /* =========================
    SERVER START
