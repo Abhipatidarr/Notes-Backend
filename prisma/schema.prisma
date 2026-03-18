@@ -8,54 +8,61 @@ datasource db {
 }
 
 model User {
-  id             Int            @id @default(autoincrement())
-  email          String         @unique
-  password       String
-  oauthProvider  String?
-  oauthId        String?
-  twoFactorCode  String?
-  notes          Note[]
-  folders        Folder[]
-  tags           Tag[]
-  tasks          Task[]         @relation("TaskOwner")
-  assignedTasks  Task[]         @relation("TaskAssignee")
-  comments       NoteComment[]
-  shares         NoteShare[]    @relation("ShareOwner")
-  activities     ActivityLog[]
-  versions       NoteVersion[]  @relation("VersionActor")
-  templates      NoteTemplate[]
-  reminders      Reminder[]
-  backups        BackupSnapshot[]
-  refreshTokens  RefreshToken[]
+  id            Int              @id @default(autoincrement())
+  email         String           @unique
+  password      String
+  oauthProvider String?
+  oauthId       String?
+  twoFactorCode String?
+  notes         Note[]
+  folders       Folder[]
+  tags          Tag[]
+  tasks         Task[]           @relation("TaskOwner")
+  assignedTasks Task[]           @relation("TaskAssignee")
+  comments      NoteComment[]
+  shares        NoteShare[]      @relation("ShareOwner")
+  activities    ActivityLog[]
+  versions      NoteVersion[]    @relation("VersionActor")
+  templates     NoteTemplate[]
+  reminders     Reminder[]
+  backups       BackupSnapshot[]
+  refreshTokens RefreshToken[]
 }
 
 model Note {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String
-  tag       String?
-  pinned    Boolean  @default(false)
-  archived  Boolean  @default(false)
-  imageUrl  String?
-  fileUrl   String?
-  checklist Json?
-  order     Int      @default(0)
-  isLocked  Boolean  @default(false)
-  lockHint  String?
-  encryptedContent String?
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  folderId  Int?
-  folder    Folder?  @relation(fields: [folderId], references: [id])
-  tags      NoteTag[]
-  tasks     Task[]
-  comments  NoteComment[]
-  shares    NoteShare[]
-  versions  NoteVersion[]
-  reminders Reminder[]
-  activities ActivityLog[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id                     Int           @id @default(autoincrement())
+  title                  String
+  content                String
+  tag                    String?
+  pinned                 Boolean       @default(false)
+  archived               Boolean       @default(false)
+  imageUrl               String?
+  latitude               Float?
+  longitude              Float?
+  reminderMinutes        Int?
+  reminderNotificationId String?
+  fileUrl                String?
+  checklist              Json?
+  order                  Int           @default(0)
+  isLocked               Boolean       @default(false)
+  lockHint               String?
+  encryptedContent       String?
+  userId                 Int
+  user                   User          @relation(fields: [userId], references: [id])
+  folderId               Int?
+  folder                 Folder?       @relation(fields: [folderId], references: [id])
+  tags                   NoteTag[]
+  tasks                  Task[]
+  comments               NoteComment[]
+  shares                 NoteShare[]
+  versions               NoteVersion[]
+  reminders              Reminder[]
+  activities             ActivityLog[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @default(now()) @updatedAt
+
+  @@index([userId, updatedAt])
+  @@index([userId, archived, pinned])
 }
 
 model Folder {
@@ -71,14 +78,14 @@ model Folder {
 }
 
 model Tag {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   name      String
   color     String?
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
   notes     NoteTag[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@unique([userId, name])
 }
@@ -126,13 +133,13 @@ model NoteComment {
 
 model NoteShare {
   id          Int      @id @default(autoincrement())
-  noteId       Int
-  note         Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  ownerId      Int
-  owner        User     @relation("ShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  targetEmail  String
-  permission   String   @default("viewer")
-  createdAt    DateTime @default(now())
+  noteId      Int
+  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  ownerId     Int
+  owner       User     @relation("ShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  targetEmail String
+  permission  String   @default("viewer")
+  createdAt   DateTime @default(now())
 }
 
 model ActivityLog {
@@ -149,14 +156,14 @@ model ActivityLog {
 }
 
 model NoteVersion {
-  id        Int      @id @default(autoincrement())
-  noteId    Int
-  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  title     String
-  content   String
+  id         Int      @id @default(autoincrement())
+  noteId     Int
+  note       Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
   editedById Int?
-  editedBy  User?    @relation("VersionActor", fields: [editedById], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
+  editedBy   User?    @relation("VersionActor", fields: [editedById], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
 }
 
 model NoteTemplate {
