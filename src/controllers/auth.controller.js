@@ -32,9 +32,21 @@ const buildTokens = async (userId) => {
 ========================= */
 
 export const signup = async (c) => {
-  const { email, password } = await c.req.json()
+  const body = await c.req.json()
+  const email = String(body?.email || "").trim().toLowerCase()
+  const password = String(body?.password || "")
 
-  const exists = await prisma.user.findUnique({ where: { email } })
+  if (!email || !password) {
+    return c.json({ message: "Email and password are required" }, 400)
+  }
+  if (password.length < 6) {
+    return c.json({ message: "Password must be at least 6 characters" }, 400)
+  }
+
+  const exists = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true }
+  })
   if (exists) {
     return c.json({ message: "Email already registered" }, 409)
   }
@@ -45,6 +57,9 @@ export const signup = async (c) => {
     data: {
       email,
       password: hashedPassword
+    },
+    select: {
+      id: true
     }
   })
 
@@ -64,11 +79,20 @@ export const signup = async (c) => {
 
 export const login = async (c) => {
   try {
+    const body = await c.req.json()
+    const email = String(body?.email || "").trim().toLowerCase()
+    const password = String(body?.password || "")
 
-    const { email, password } = await c.req.json()
+    if (!email || !password) {
+      return c.json({ message: "Email and password are required" }, 400)
+    }
 
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      select: {
+        id: true,
+        password: true
+      }
     })
 
     if (!user) {
@@ -115,55 +139,6 @@ export const login = async (c) => {
     }, 500)
 
   }
-}
-
-export const oauthLogin = async (c) => {
-  const { email, provider = "google", oauthId } = await c.req.json()
-  if (!email || !oauthId) {
-    return c.json({ message: "email and oauthId are required" }, 400)
-  }
-
-  let user = await prisma.user.findUnique({ where: { email } })
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        email,
-        password: await bcrypt.hash(`${provider}:${oauthId}`, 10),
-        oauthProvider: provider,
-        oauthId
-      }
-    })
-  }
-
-  const { accessToken, refreshToken } = await buildTokens(user.id)
-  return c.json({ accessToken, refreshToken, message: "OAuth login successful" })
-}
-
-export const setupTwoFactor = async (c) => {
-  const userId = c.get("userId")
-  const code = `${Math.floor(100000 + Math.random() * 900000)}`
-  await prisma.user.update({
-    where: { id: userId },
-    data: { twoFactorCode: code }
-  })
-  return c.json({
-    message: "2FA code generated. Integrate SMS/email provider to deliver this code.",
-    code
-  })
-}
-
-export const verifyTwoFactor = async (c) => {
-  const userId = c.get("userId")
-  const { code } = await c.req.json()
-  const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user || user.twoFactorCode !== code) {
-    return c.json({ message: "Invalid 2FA code" }, 400)
-  }
-  await prisma.user.update({
-    where: { id: userId },
-    data: { twoFactorCode: null }
-  })
-  return c.json({ message: "2FA verification successful" })
 }
 
 export const logout = async (c) => {
