@@ -87,7 +87,10 @@ export const signup = async (c) => {
     })
   } catch (error) {
     console.error("SIGNUP ERROR:", error)
-    return c.json({ message: "Server error" }, 500)
+    return c.json({
+      message: "Server error",
+      detail: error?.message || String(error)
+    }, 500)
   }
 }
 
